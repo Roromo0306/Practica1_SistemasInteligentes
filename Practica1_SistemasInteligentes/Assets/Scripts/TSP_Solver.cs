@@ -84,11 +84,72 @@ public class TSP_Solver
             distanciaTotal += Vector3.Distance(a, b);
         }
 
-        // Volver a la ciudad inicial
+        // Vuelve a la ciudad inicial
         Vector3 ultima = TSPManager.Instance.Coordenadas[ruta[ruta.Count - 1]];
         Vector3 primera = TSPManager.Instance.Coordenadas[ruta[0]];
         distanciaTotal += Vector3.Distance(ultima, primera);
 
         return distanciaTotal;
+    }
+
+    public List<int> SolucionBusquedaTabu(int maxIteraciones, int tamanoListaTabu, int semilla)
+    {
+        System.Random rand = new System.Random(semilla);
+
+        List<int> solucionActual = generarRutaInicial(rand);
+        float costeActual = calcularLongitudTotal(solucionActual);
+
+        List<int> mejorSolucion = new List<int>(solucionActual);
+        float mejorCoste = costeActual;
+
+        Queue<string> listaTabu = new Queue<string>();
+
+        for (int iter = 0; iter < maxIteraciones; iter++)
+        {
+            List<int> mejorVecino = null;
+            float mejorCosteVecino = float.MaxValue;
+            string mejorMovimiento = "";
+
+            for (int k = 0; k < 50; k++) // número de vecinos explorados
+            {
+                int i = rand.Next(1, solucionActual.Count - 2);
+                int j = rand.Next(i, solucionActual.Count - 1);
+
+                List<int> vecino = new List<int>(solucionActual);
+                vecino.Reverse(i, j - i + 1);
+
+                string movimiento = i + "-" + j;
+
+                if (listaTabu.Contains(movimiento))
+                    continue;
+
+                float costeVecino = calcularLongitudTotal(vecino);
+
+                if (costeVecino < mejorCosteVecino)
+                {
+                    mejorVecino = vecino;
+                    mejorCosteVecino = costeVecino;
+                    mejorMovimiento = movimiento;
+                }
+            }
+
+            if (mejorVecino == null)
+                break;
+
+            solucionActual = mejorVecino;
+            costeActual = mejorCosteVecino;
+
+            listaTabu.Enqueue(mejorMovimiento);
+            if (listaTabu.Count > tamanoListaTabu)
+                listaTabu.Dequeue();
+
+            if (costeActual < mejorCoste)
+            {
+                mejorSolucion = new List<int>(solucionActual);
+                mejorCoste = costeActual;
+            }
+        }
+
+        return mejorSolucion;
     }
 }
