@@ -16,30 +16,39 @@ public class TSP_Solver
         
     }
 
-    public void SolucionRecocidoSimulado(int maxFes,float TInicial, float alpha, int vecinos, int semilla)
+    public List<int> SolucionRecocidoSimulado(int maxFes,float TInicial, float alpha, int vecinos, int semilla)
     {
+        Debug.Log("Funcion recocido leida");
+
         int Fes = 0;
         float T = TInicial;
         System.Random rand = new System.Random(semilla);
         List<int> rutaInicial = generarRutaInicial(rand);
         float mejorLongitud = calcularLongitudTotal(rutaInicial);
+        List<int> mejorCandidata = null;
 
         while (Fes< maxFes && T > 1e-6)
         {
-            List<int> mejorCandidata = null;
+            mejorCandidata = null;
 
             for (int n = 0; n < vecinos; n++)
             {
 
                 List<int> candidata = generarVecino2OPT(rutaInicial, rand);
                 float longitud = calcularLongitudTotal(candidata);
+                Fes++;
+
                 if (longitud < mejorLongitud)
                 {
                     mejorCandidata = candidata;
                     mejorLongitud = longitud;
                 }
             }
+
         }
+
+        return mejorCandidata;
+        
     }
 
     private List<int> generarVecino2OPT(List<int> recorrido, System.Random rand)
@@ -84,7 +93,6 @@ public class TSP_Solver
             distanciaTotal += Vector3.Distance(a, b);
         }
 
-        // Vuelve a la ciudad inicial
         Vector3 ultima = TSPManager.Instance.Coordenadas[ruta[ruta.Count - 1]];
         Vector3 primera = TSPManager.Instance.Coordenadas[ruta[0]];
         distanciaTotal += Vector3.Distance(ultima, primera);
