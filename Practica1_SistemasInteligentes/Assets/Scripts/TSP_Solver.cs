@@ -47,8 +47,7 @@ public class TSP_Solver
 
         }
 
-        return mejorCandidata;
-        
+        return mejorCandidata ?? rutaInicial;
     }
 
     private List<int> generarVecino2OPT(List<int> recorrido, System.Random rand)

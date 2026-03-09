@@ -39,8 +39,19 @@ public class TSPManager : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-      
+
         lineRenderer = GetComponent<LineRenderer>();
+
+        if (lineRenderer == null)
+            lineRenderer = gameObject.AddComponent<LineRenderer>();
+
+        // CONFIGURACIÓN NECESARIA PARA QUE SE VEA
+        lineRenderer.startWidth = 0.2f;
+        lineRenderer.endWidth = 0.2f;
+        lineRenderer.material = new Material(Shader.Find("Sprites/Default"));
+        lineRenderer.positionCount = 0;
+        lineRenderer.useWorldSpace = true;
+
         CargarArchivoTSP();
 
     }
@@ -50,11 +61,8 @@ public class TSPManager : MonoBehaviour
     {
         if (calcularRuta)
         {
-            TSP_Solver solver = new TSP_Solver();
-           List<int> solucion = solver.SolucionRecocidoSimulado(maxFs,temperaturalInicial,alpha,20,2);
-            DibujarRuta(solucion);
             calcularRuta = false;
-
+            StartCoroutine(EjecutarRecocido());
         }
     }
 
@@ -74,29 +82,47 @@ public class TSPManager : MonoBehaviour
             float X = float.Parse(partes[1]);
             float Y = float.Parse(partes[2]);
             coordenadasCiudades.Add(new Vector3(X * escala, Y * escala, 0));
-            DibujarCiudades();
+            
         }
+
+        DibujarCiudades();
     }
 
     void DibujarRuta(List<int> puntos)
     {
-        if(lineRenderer == null)
+        if (lineRenderer == null)
         {
             Debug.LogError("Falta el line renderer");
+            return;
         }
 
-        if(puntos == null)
+        if (puntos == null || puntos.Count == 0)
         {
             Debug.LogError("Falta la ruta a dibujar");
+            return;
         }
+
+        if (objetosCiudades.Count == 0)
+        {
+            Debug.LogError("No hay ciudades instanciadas");
+            return;
+        }
+
         lineRenderer.positionCount = puntos.Count + 1;
 
-        for(int i = 0; i < puntos.Count; i++)
+        for (int i = 0; i < puntos.Count; i++)
         {
+            if (puntos[i] >= objetosCiudades.Count)
+            {
+                Debug.LogError("Indice fuera de rango en la ruta");
+                return;
+            }
+
             lineRenderer.SetPosition(i, objetosCiudades[puntos[i]].position);
         }
 
         lineRenderer.SetPosition(puntos.Count, objetosCiudades[puntos[0]].position);
+        Debug.Log("Dibujando ruta con " + puntos.Count + " ciudades");
     }
 
     void DibujarCiudades()
@@ -105,6 +131,54 @@ public class TSPManager : MonoBehaviour
         {
             GameObject ciudad = Instantiate(prefabCiudad, pos, Quaternion.identity);
             objetosCiudades.Add(ciudad.transform);
+        }
+
+        Debug.Log("Ciudades creadas: " + objetosCiudades.Count);
+
+
+    }
+    float CalcularDistancia(List<int> ruta)
+    {
+        float distanciaTotal = 0f;
+
+        for (int i = 0; i < ruta.Count - 1; i++)
+        {
+            Vector3 a = coordenadasCiudades[ruta[i]];
+            Vector3 b = coordenadasCiudades[ruta[i + 1]];
+            distanciaTotal += Vector3.Distance(a, b);
+        }
+
+        Vector3 ultima = coordenadasCiudades[ruta[ruta.Count - 1]];
+        Vector3 primera = coordenadasCiudades[ruta[0]];
+        distanciaTotal += Vector3.Distance(ultima, primera);
+
+        return distanciaTotal;
+    }
+    IEnumerator EjecutarRecocido()
+    {
+        TSP_Solver solver = new TSP_Solver();
+
+        float mejorDistancia = float.MaxValue;
+        List<int> mejorRutaActual = null;
+
+        for (int i = 0; i < run; i++)
+        {
+            List<int> solucion = solver.SolucionRecocidoSimulado(maxFs, temperaturalInicial, alpha, 20, i);
+
+            if (solucion != null)
+            {
+                float distancia = CalcularDistancia(solucion);
+
+                if (distancia < mejorDistancia)
+                {
+                    mejorDistancia = distancia;
+                    mejorRutaActual = solucion;
+
+                    DibujarRuta(mejorRutaActual);
+                }
+            }
+
+            yield return null; // espera al siguiente frame
         }
     }
 }
