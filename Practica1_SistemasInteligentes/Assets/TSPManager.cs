@@ -163,7 +163,7 @@ public class TSPManager : MonoBehaviour
 
         for (int i = 0; i < run; i++)
         {
-            List<int> solucion = solver.SolucionRecocidoSimulado(maxFs, temperaturalInicial, alpha, 20, i);
+            List<int> solucion = solver.SolucionRecocidoSimulado(maxFs, temperaturalInicial, alpha, 100, i);
 
             if (solucion != null)
             {
