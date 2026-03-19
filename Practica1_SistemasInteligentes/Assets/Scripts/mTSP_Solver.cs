@@ -113,7 +113,7 @@ public class mTSP_Solver
         return ruta;
     }
 
-    private float calcularLongitudTotalM(List<int> ruta)
+    private float calcularLongitudTotalM(List<int> ruta, float pesoAgente = 0.5f)
     {
         float distanciaTotal = 0f;
         float distanciaMaxAgente = 0f;
@@ -128,26 +128,33 @@ public class mTSP_Solver
 
             if (i != -1 )
             {
-             
-                 b = TSPManager.Instance.Coordenadas[ruta[i]];
-
+                
+                b = TSPManager.Instance.Coordenadas[ruta[i]];
+                float distanciaSumar = Vector3.Distance(a, b);
+                distanciaTotal += distanciaSumar;
+                distanciaAgenteActual += distanciaSumar;
             }
             else
             {
                 b = TSPManager.Instance.Coordenadas[ruta[almacen]];
-               // distanciaMaxAgente = Mathf.Max(distanciaMaxAgente,distanciaAgenteActual,)
-  
+                float distanciaSumar = Vector3.Distance(a, b);
+                distanciaTotal += distanciaSumar;
+                distanciaAgenteActual += distanciaSumar;
+                distanciaMaxAgente = Mathf.Max(distanciaMaxAgente, distanciaAgenteActual);
+                distanciaAgenteActual = 0;
+
             }
-            float distanciaSumar = Vector3.Distance(a, b);
-            distanciaTotal += distanciaSumar;
-            distanciaAgenteActual += distanciaSumar;
+           
+          
         }
 
-        Vector3 ultima = TSPManager.Instance.Coordenadas[ruta[ruta.Count - 1]];
+        /*Vector3 ultima = TSPManager.Instance.Coordenadas[ruta[ruta.Count - 1]];
         Vector3 primera = TSPManager.Instance.Coordenadas[ruta[0]];
-        distanciaTotal += Vector3.Distance(ultima, primera);
+        distanciaTotal += Vector3.Distance(ultima, primera);*/
 
-        return distanciaTotal;
+       
+
+        return distanciaTotal + pesoAgente * distanciaMaxAgente;
     }
 
     public List<int> SolucionBusquedaTabu(int maxIteraciones, int tamanoListaTabu, int semilla)
