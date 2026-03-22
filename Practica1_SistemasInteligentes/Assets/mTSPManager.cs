@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System.IO;
@@ -13,7 +13,7 @@ public class mTSPManager : MonoBehaviour
     public GameObject prefabCiudad;
     public float escala = 0.01f;
 
-    [Header("P�rametos recocido simulado")]
+    [Header("Párametos recocido simulado")]
     public int run = 30;
     public int maxFs = 50000;
     public float temperaturalInicial = 1000f;
@@ -27,6 +27,16 @@ public class mTSPManager : MonoBehaviour
     private List<Vector3> coordenadasCiudades = new List<Vector3>();
     private List<Transform>  objetosCiudades = new List<Transform>();
     private LineRenderer lineRenderer;
+    private List<LineRenderer> lineasAgentes = new List<LineRenderer>();
+
+    Color[] colores = new Color[]
+{
+    Color.red,
+    Color.blue,
+    Color.green,
+    Color.yellow,
+    Color.magenta
+};
 
     public static mTSPManager Instance;
     public List<Vector3> Coordenadas => coordenadasCiudades;
@@ -45,7 +55,7 @@ public class mTSPManager : MonoBehaviour
         if (lineRenderer == null)
             lineRenderer = gameObject.AddComponent<LineRenderer>();
 
-        // CONFIGURACI�N NECESARIA PARA QUE SE VEA
+        // CONFIGURACIÓN NECESARIA PARA QUE SE VEA
         lineRenderer.startWidth = 0.2f;
         lineRenderer.endWidth = 0.2f;
         lineRenderer.material = new Material(Shader.Find("Sprites/Default"));
@@ -88,41 +98,79 @@ public class mTSPManager : MonoBehaviour
         DibujarCiudades();
     }
 
-    void DibujarRuta(List<int> puntos)
+    void DibujarRuta(List<int> ruta)
     {
-        if (lineRenderer == null)
+        if (ruta == null || ruta.Count == 0)
+    {
+        Debug.LogError("Ruta vacía");
+        return;
+    }
+
+    // Limpiar líneas anteriores
+    foreach (var lr in lineasAgentes)
+    {
+        Destroy(lr.gameObject);
+    }
+    lineasAgentes.Clear();
+
+    List<List<int>> rutasAgentes = new List<List<int>>();
+    List<int> actual = new List<int>();
+
+    foreach (int punto in ruta)
+    {
+        if (punto == -1)
         {
-            Debug.LogError("Falta el line renderer");
-            return;
+            rutasAgentes.Add(new List<int>(actual));
+            actual.Clear();
+        }
+        else
+        {
+            actual.Add(punto);
+        }
+    }
+
+    if (actual.Count > 0)
+        rutasAgentes.Add(actual);
+
+    Color[] colores = new Color[]
+    {
+        Color.red,
+        Color.blue,
+        Color.green,
+        Color.yellow,
+        Color.magenta
+    };
+
+    for (int a = 0; a < rutasAgentes.Count; a++)
+    {
+        GameObject lineaObj = new GameObject("RutaAgente_" + a);
+        LineRenderer lr = lineaObj.AddComponent<LineRenderer>();
+
+        lr.startWidth = 0.2f;
+        lr.endWidth = 0.2f;
+        lr.material = new Material(Shader.Find("Sprites/Default"));
+        lr.startColor = colores[a % colores.Length];
+        lr.endColor = colores[a % colores.Length];
+
+        List<int> subRuta = rutasAgentes[a];
+
+        lr.positionCount = subRuta.Count + 2;
+
+        // Inicio en almacén (0)
+        lr.SetPosition(0, objetosCiudades[0].position);
+
+        for (int i = 0; i < subRuta.Count; i++)
+        {
+            lr.SetPosition(i + 1, objetosCiudades[subRuta[i]].position);
         }
 
-        if (puntos == null || puntos.Count == 0)
-        {
-            Debug.LogError("Falta la ruta a dibujar");
-            return;
-        }
+        // Volver al almacén
+        lr.SetPosition(subRuta.Count + 1, objetosCiudades[0].position);
 
-        if (objetosCiudades.Count == 0)
-        {
-            Debug.LogError("No hay ciudades instanciadas");
-            return;
-        }
+        lineasAgentes.Add(lr);
+    }
 
-        lineRenderer.positionCount = puntos.Count + 1;
-
-        for (int i = 0; i < puntos.Count; i++)
-        {
-            if (puntos[i] >= objetosCiudades.Count)
-            {
-                Debug.LogError("Indice fuera de rango en la ruta");
-                return;
-            }
-
-            lineRenderer.SetPosition(i, objetosCiudades[puntos[i]].position);
-        }
-
-        lineRenderer.SetPosition(puntos.Count, objetosCiudades[puntos[0]].position);
-        Debug.Log("Dibujando ruta con " + puntos.Count + " ciudades");
+    Debug.Log("Rutas dibujadas: " + rutasAgentes.Count);
     }
 
     void DibujarCiudades()
@@ -143,43 +191,49 @@ public class mTSPManager : MonoBehaviour
 
         for (int i = 0; i < ruta.Count - 1; i++)
         {
+            // Evitar índices inválidos (-1)
+            if (ruta[i] == -1 || ruta[i + 1] == -1)
+                continue;
+
             Vector3 a = coordenadasCiudades[ruta[i]];
             Vector3 b = coordenadasCiudades[ruta[i + 1]];
             distanciaTotal += Vector3.Distance(a, b);
         }
 
-        Vector3 ultima = coordenadasCiudades[ruta[ruta.Count - 1]];
-        Vector3 primera = coordenadasCiudades[ruta[0]];
-        distanciaTotal += Vector3.Distance(ultima, primera);
-
         return distanciaTotal;
     }
     IEnumerator EjecutarRecocido()
     {
-        TSP_Solver solver = new TSP_Solver();
+        mTSP_Solver solver = new mTSP_Solver();
 
         float mejorDistancia = float.MaxValue;
         List<int> mejorRutaActual = null;
 
         for (int i = 0; i < run; i++)
         {
-            List<int> solucion = solver.SolucionRecocidoSimulado(maxFs, temperaturalInicial, alpha, 100, i);
+            List<int> solucion = solver.SolucionRecocidoSimulado(maxFs, temperaturalInicial, alpha, 20, i);
 
             if (solucion != null)
             {
                 float distancia = CalcularDistancia(solucion);
 
+                
                 if (distancia < mejorDistancia)
                 {
                     mejorDistancia = distancia;
                     mejorRutaActual = solucion;
 
                     DibujarRuta(mejorRutaActual);
+
+                    Debug.Log($"Iteración {i + 1}: distancia = {mejorDistancia}");
                 }
             }
 
-            yield return null; // espera al siguiente frame
+            
+            yield return new WaitForSeconds(0.05f);
         }
+
+        Debug.Log("Recocido simulado finalizado. Mejor distancia: " + mejorDistancia);
     }
 
     float ER(List<float> longitudesRutas, float optimo) //error relativo (aplicarlo con tabu search y recocido)
@@ -218,7 +272,7 @@ public class mTSPManager : MonoBehaviour
         return ((media - optimo)/optimo) *100;
     }
 
-    //a�adir como baja el recocido simulado y lineas de convergencia
-    //A�adir a un agente/personaje que recorra esas rutas
+    //añadir como baja el recocido simulado y lineas de convergencia
+    //Añadir a un agente/personaje que recorra esas rutas
 
 }

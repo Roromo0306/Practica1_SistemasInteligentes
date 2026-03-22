@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -23,8 +23,9 @@ public class mTSP_Solver
         int Fes = 0;
         float T = TInicial;
         System.Random rand = new System.Random(semilla);
-        List<int> rutaInicial = generarRutaInicialM(rand);
+        List<int> rutaInicial = generarRutaInicialM(rand,5);
         float mejorLongitud = calcularLongitudTotalM(rutaInicial);
+        List<int> mejorRuta = new List<int>(rutaInicial);
         List<int> mejorCandidata = null;
 
         while (Fes < maxFes && T > 1e-6)
@@ -45,9 +46,10 @@ public class mTSP_Solver
                 }
             }
 
-        }
+            T = T * alpha;
 
-        return mejorCandidata ?? rutaInicial;
+        }
+        return aplicar2OptFinal(mejorRuta);
     }
 
     private List<int> generarVecino2OPT(List<int> recorrido, System.Random rand)
@@ -60,99 +62,182 @@ public class mTSP_Solver
         return nuevoRecorrido;
     }
 
+
+
     private List<int> generarRutaInicialM(System.Random rand, int numAgentes = 1)
     {
-        int numCiudades = TSPManager.Instance.NumCiudades;
+        int numCiudades = mTSPManager.Instance.NumCiudades;
         List<int> ruta = new List<int>();
 
-        for (int i = 1; i < numCiudades; i++)
+        // Tomar coordenadas sin el almacén (0)
+        List<int> ciudades = new List<int>();
+        for (int i = 1; i < numCiudades; i++) ciudades.Add(i);
+
+        // Ordenarlas por ángulo respecto al almacén
+        Vector3 almacen = mTSPManager.Instance.Coordenadas[0];
+        ciudades.Sort((a, b) => {
+            Vector3 dirA = mTSPManager.Instance.Coordenadas[a] - almacen;
+            Vector3 dirB = mTSPManager.Instance.Coordenadas[b] - almacen;
+            float angleA = Mathf.Atan2(dirA.y, dirA.x);
+            float angleB = Mathf.Atan2(dirB.y, dirB.x);
+            return angleA.CompareTo(angleB);
+        });
+
+        // Dividir en numAgentes grupos
+        int perAgent = Mathf.CeilToInt(ciudades.Count / (float)numAgentes);
+        for (int ag = 0; ag < numAgentes; ag++)
         {
-            ruta.Add(i);
-        }
+            int start = ag * perAgent;
+            int end = Mathf.Min(start + perAgent, ciudades.Count);
+            ruta.AddRange(ciudades.GetRange(start, end - start));
 
-        for (int i = ruta.Count - 1; i > 0; i--)
-        {
-            int j = rand.Next(i + 1);
-            int temp = ruta[i];
-            ruta[i] = ruta[j];
-            ruta[j] = temp;
-        }
-
-        int posCorte = 1;
-
-        for(int i = 0; i < numAgentes -1; i++)
-        {
-            posCorte = rand.Next(posCorte, ruta.Count);
-            ruta.Insert(posCorte, -1);
-            if(posCorte == ruta.Count)
-            {
-                posCorte = 1; //crear lista que guarde los puntos de corte y cuando genere uno sea seguro que no esta ya en esa lista
-            }
-        }
-
-        // LISTA DE PUNTOS DE CORTE
-        List<int> puntosCorte = new List<int>();
-
-        for (int i = 0; i < numAgentes - 1; i++)
-        {
-            do
-            {
-                posCorte = rand.Next(1, ruta.Count);
-            }
-            while (puntosCorte.Contains(posCorte));
-
-            puntosCorte.Add(posCorte);
-            ruta.Insert(posCorte, -1);
-
-            if (posCorte == ruta.Count)
-            {
-                posCorte = 1;
-            }
+            if (ag < numAgentes - 1)
+                ruta.Add(-1); // separador
         }
 
         return ruta;
     }
+    private List<int> aplicar2OptFinal(List<int> ruta)
+    {
+        List<List<int>> subRutas = new List<List<int>>();
+        List<int> actual = new List<int>();
+
+        // 🔹 Separar por agentes
+        foreach (int punto in ruta)
+        {
+            if (punto == -1)
+            {
+                if (actual.Count > 0)
+                    subRutas.Add(new List<int>(actual));
+
+                actual.Clear();
+            }
+            else
+            {
+                actual.Add(punto);
+            }
+        }
+
+        if (actual.Count > 0)
+            subRutas.Add(actual);
+
+        // 🔹 Aplicar 2-OPT a cada agente
+        for (int r = 0; r < subRutas.Count; r++)
+        {
+            bool mejora = true;
+
+            while (mejora)
+            {
+                mejora = false;
+
+                for (int i = 0; i < subRutas[r].Count - 2; i++)
+                {
+                    for (int j = i + 1; j < subRutas[r].Count - 1; j++)
+                    {
+                        List<int> nueva = new List<int>(subRutas[r]);
+                        nueva.Reverse(i, j - i + 1);
+
+                        if (calcularLongitudSubRuta(nueva) < calcularLongitudSubRuta(subRutas[r]))
+                        {
+                            subRutas[r] = nueva;
+                            mejora = true;
+                        }
+                    }
+                }
+            }
+        }
+
+        // 🔹 Reconstruir ruta con -1
+        List<int> resultado = new List<int>();
+
+        for (int i = 0; i < subRutas.Count; i++)
+        {
+            resultado.AddRange(subRutas[i]);
+            if (i < subRutas.Count - 1)
+                resultado.Add(-1);
+        }
+
+        return resultado;
+    }
+
+    private float calcularLongitudSubRuta(List<int> ruta)
+    {
+        float distancia = 0f;
+
+        for (int i = 0; i < ruta.Count - 1; i++)
+        {
+            Vector3 a = mTSPManager.Instance.Coordenadas[ruta[i]];
+            Vector3 b = mTSPManager.Instance.Coordenadas[ruta[i + 1]];
+            distancia += Vector3.Distance(a, b);
+        }
+
+        return distancia;
+    }
+    /* private float calcularLongitudTotalM(List<int> ruta, float pesoAgente = 0.5f)
+     {
+         float distanciaTotal = 0f;
+         float distanciaMaxAgente = 0f;
+         float distanciaAgenteActual= 0f;
+         int almacen = 0;
+
+         for (int i = 1; i < ruta.Count - 1; i++)
+         {
+             Vector3 a = mTSPManager.Instance.Coordenadas[ruta[i - 1]];
+             Vector3 b = new Vector3();
+
+
+             if (ruta[i] != -1)
+             {
+
+                 b = mTSPManager.Instance.Coordenadas[ruta[i]];
+                 float distanciaSumar = Vector3.Distance(a, b);
+                 distanciaTotal += distanciaSumar;
+                 distanciaAgenteActual += distanciaSumar;
+             }
+             else
+             {
+                 b = mTSPManager.Instance.Coordenadas[ruta[almacen]];
+                 float distanciaSumar = Vector3.Distance(a, b);
+                 distanciaTotal += distanciaSumar;
+                 distanciaAgenteActual += distanciaSumar;
+                 distanciaMaxAgente = Mathf.Max(distanciaMaxAgente, distanciaAgenteActual);
+                 distanciaAgenteActual = 0;
+
+             }
+
+
+         }
+
+
+         Vector3 ultima = TSPManager.Instance.Coordenadas[ruta[ruta.Count - 1]];
+         Vector3 primera = TSPManager.Instance.Coordenadas[ruta[0]];
+         distanciaTotal += Vector3.Distance(ultima, primera);
+
+
+
+         return distanciaTotal + pesoAgente * distanciaMaxAgente;
+     }*/
 
     private float calcularLongitudTotalM(List<int> ruta, float pesoAgente = 0.5f)
     {
         float distanciaTotal = 0f;
         float distanciaMaxAgente = 0f;
-        float distanciaAgenteActual= 0f;
+        float distanciaAgenteActual = 0f;
         int almacen = 0;
 
         for (int i = 1; i < ruta.Count - 1; i++)
         {
-            Vector3 a = TSPManager.Instance.Coordenadas[ruta[i - 1]];
-            Vector3 b = new Vector3();
+            
+            if (ruta[i] == -1 || ruta[i - 1] == -1)
+                continue;
 
+            Vector3 a = mTSPManager.Instance.Coordenadas[ruta[i - 1]];
+            Vector3 b = mTSPManager.Instance.Coordenadas[ruta[i]];
 
-            if (i != -1 )
-            {
-                
-                b = TSPManager.Instance.Coordenadas[ruta[i]];
-                float distanciaSumar = Vector3.Distance(a, b);
-                distanciaTotal += distanciaSumar;
-                distanciaAgenteActual += distanciaSumar;
-            }
-            else
-            {
-                b = TSPManager.Instance.Coordenadas[ruta[almacen]];
-                float distanciaSumar = Vector3.Distance(a, b);
-                distanciaTotal += distanciaSumar;
-                distanciaAgenteActual += distanciaSumar;
-                distanciaMaxAgente = Mathf.Max(distanciaMaxAgente, distanciaAgenteActual);
-                distanciaAgenteActual = 0;
-
-            }
-           
-          
+            float distanciaSumar = Vector3.Distance(a, b);
+            distanciaTotal += distanciaSumar;
+            distanciaAgenteActual += distanciaSumar;
         }
-
-        /*Vector3 ultima = TSPManager.Instance.Coordenadas[ruta[ruta.Count - 1]];
-        Vector3 primera = TSPManager.Instance.Coordenadas[ruta[0]];
-        distanciaTotal += Vector3.Distance(ultima, primera);*/
-
-       
 
         return distanciaTotal + pesoAgente * distanciaMaxAgente;
     }
@@ -175,7 +260,7 @@ public class mTSP_Solver
             float mejorCosteVecino = float.MaxValue;
             string mejorMovimiento = "";
 
-            for (int k = 0; k < 50; k++) // n�mero de vecinos explorados
+            for (int k = 0; k < 50; k++) // número de vecinos explorados
             {
                 int i = rand.Next(1, solucionActual.Count - 2);
                 int j = rand.Next(i, solucionActual.Count - 1);
