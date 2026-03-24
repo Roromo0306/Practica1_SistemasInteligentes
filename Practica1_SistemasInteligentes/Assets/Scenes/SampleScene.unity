@@ -244,6 +244,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2531f00e58c3ae649b25202c9b16a555, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  usarBusquedaTabu: 0
   calcularRuta: 0
   ArchivoTSP: berlin52.tsp
   prefabCiudad: {fileID: 1838352210917159059, guid: 94eef2224b220a94a8f65853a931b9d5, type: 3}

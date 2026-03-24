@@ -6,6 +6,8 @@ using System.Linq;
 
 public class TSPManager : MonoBehaviour
 {
+    [Header("Tipo de algoritmo")]
+    public bool usarBusquedaTabu = false;
     public bool calcularRuta = false;
 
     [Header("Crear Ciudad")]
@@ -59,6 +61,12 @@ public class TSPManager : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        if (usarBusquedaTabu)
+        {
+            StartCoroutine(EjecutarTabu());
+        }
+            
+
         if (calcularRuta)
         {
             calcularRuta = false;
@@ -179,6 +187,34 @@ public class TSPManager : MonoBehaviour
             }
 
             yield return null; // espera al siguiente frame
+        }
+    }
+
+    IEnumerator EjecutarTabu()
+    {
+        TSP_Solver solver = new TSP_Solver();
+
+        float mejorDistancia = float.MaxValue;
+        List<int> mejorRutaActual = null;
+
+        for (int i = 0; i < run; i++)
+        {
+            List<int> solucion = solver.SolucionBusquedaTabu(5000, 50, i);
+
+            if (solucion != null)
+            {
+                float distancia = CalcularDistancia(solucion);
+
+                if (distancia < mejorDistancia)
+                {
+                    mejorDistancia = distancia;
+                    mejorRutaActual = solucion;
+
+                    DibujarRuta(mejorRutaActual);
+                }
+            }
+
+            yield return null;
         }
     }
 }
