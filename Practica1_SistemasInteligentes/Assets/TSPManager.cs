@@ -34,6 +34,8 @@ public class TSPManager : MonoBehaviour
     public List<Vector3> Coordenadas => coordenadasCiudades;
     public int NumCiudades => coordenadasCiudades.Count;
 
+    List<float> resultados = new List<float>();
+
     void Awake()
     {
         Instance = this;
@@ -61,16 +63,14 @@ public class TSPManager : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        if (usarBusquedaTabu)
-        {
-            StartCoroutine(EjecutarTabu());
-        }
-            
-
         if (calcularRuta)
         {
             calcularRuta = false;
-            StartCoroutine(EjecutarRecocido());
+
+            if (usarBusquedaTabu)
+                StartCoroutine(EjecutarTabu());
+            else
+                StartCoroutine(EjecutarRecocido());
         }
     }
 
@@ -164,9 +164,11 @@ public class TSPManager : MonoBehaviour
     }
     IEnumerator EjecutarRecocido()
     {
+        Debug.Log("funcion tabu leida");
         TSP_Solver solver = new TSP_Solver();
 
         float mejorDistancia = float.MaxValue;
+        resultados.Clear();
         List<int> mejorRutaActual = null;
 
         for (int i = 0; i < run; i++)
@@ -176,6 +178,8 @@ public class TSPManager : MonoBehaviour
             if (solucion != null)
             {
                 float distancia = CalcularDistancia(solucion);
+                Debug.Log("Distancia: " + distancia);
+                resultados.Add(distancia);
 
                 if (distancia < mejorDistancia)
                 {
@@ -188,6 +192,14 @@ public class TSPManager : MonoBehaviour
 
             yield return null; // espera al siguiente frame
         }
+
+        //float optimoReal = mejorRuta;
+        float optimoReal = 870f;
+
+        Debug.Log("===== RECOCIDO =====");
+        Debug.Log("ER: " + ER(resultados, optimoReal));
+        Debug.Log("DPP: " + DPP(resultados));
+        Debug.Log("GAP: " + GAP(resultados, optimoReal));
     }
 
     IEnumerator EjecutarTabu()
@@ -196,6 +208,7 @@ public class TSPManager : MonoBehaviour
 
         float mejorDistancia = float.MaxValue;
         List<int> mejorRutaActual = null;
+        resultados.Clear();
 
         for (int i = 0; i < run; i++)
         {
@@ -204,6 +217,9 @@ public class TSPManager : MonoBehaviour
             if (solucion != null)
             {
                 float distancia = CalcularDistancia(solucion);
+                Debug.Log("Distancia: " + distancia);
+                resultados.Add(distancia);
+
 
                 if (distancia < mejorDistancia)
                 {
@@ -216,5 +232,52 @@ public class TSPManager : MonoBehaviour
 
             yield return null;
         }
+
+        //float optimoReal = mejorRuta;
+        float optimoReal = 870f;
+
+        Debug.Log("===== TABU =====");
+        Debug.Log("ER: " + ER(resultados, optimoReal));
+        Debug.Log("DPP: " + DPP(resultados));
+        Debug.Log("GAP: " + GAP(resultados, optimoReal));
     }
+
+    float ER(List<float> longitudesRutas, float optimoReal)
+    {
+        float suma = 0;
+        foreach (var longitud in longitudesRutas)
+        {
+            suma += (longitud - optimoReal) / optimoReal;
+        }
+        return (suma / longitudesRutas.Count) * 100f;
+    }
+
+    float DPP(List<float> longitudesRutas)
+    {
+        float media = longitudesRutas.Average();
+        float varianza = 0;
+
+        foreach (var longitud in longitudesRutas)
+        {
+            varianza += Mathf.Pow((longitud - media), 2);
+        }
+
+        varianza /= longitudesRutas.Count;
+        float desviacionEstandar = Mathf.Sqrt(varianza);
+
+        return (desviacionEstandar / media) * 100;
+    }
+
+    float GAP(List<float> longitudesRutas, float optimo)
+    {
+        float media = longitudesRutas.Average();
+        return ((media - optimo) / optimo) * 100;
+    }
+
+    float ObtenerFactorEscala()
+    {
+        return escala;
+    }
+
+   
 }
