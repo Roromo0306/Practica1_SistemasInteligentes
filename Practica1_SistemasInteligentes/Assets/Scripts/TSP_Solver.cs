@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+
 public class TSP_Solver 
 {
     // Start is called before the first frame update
@@ -16,7 +17,7 @@ public class TSP_Solver
         
     }
 
-    public List<int> SolucionRecocidoSimulado(int maxFes,float TInicial, float alpha, int vecinos, int semilla)
+    public List<int> SolucionRecocidoSimulado(int maxFes, float TInicial, float alpha, int vecinos, int semilla, System.Action<float, float> onUpdate)
     {
         Debug.Log("Funcion recocido leida");
 
@@ -28,6 +29,7 @@ public class TSP_Solver
         float mejorLongitud = longitudActual;
         List<int> mejorRuta = new List<int>(rutaInicial);
         List<int> mejorCandidata = null;
+        
 
         while (Fes< maxFes && T > 1e-6)
         {
@@ -53,7 +55,7 @@ public class TSP_Solver
                     }
                 }
             }
-
+            onUpdate?.Invoke(longitudActual, T);
             T = T * alpha;
         }
         mejorRuta = aplicar2OptFinal(mejorRuta);

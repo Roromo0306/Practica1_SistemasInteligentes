@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using System.IO;
 using System.Linq;
+using TMPro;
 
 public class TSPManager : MonoBehaviour
 {
@@ -25,6 +26,8 @@ public class TSPManager : MonoBehaviour
     public float mejorRuta = 7542;
 
 
+    [Header("Informacion")]
+    public TextMeshProUGUI textoInfo;
 
     private List<Vector3> coordenadasCiudades = new List<Vector3>();
     private List<Transform>  objetosCiudades = new List<Transform>();
@@ -66,11 +69,14 @@ public class TSPManager : MonoBehaviour
         if (calcularRuta)
         {
             calcularRuta = false;
+            StartCoroutine(EjecutarRecocido());
+        }
 
-            if (usarBusquedaTabu)
-                StartCoroutine(EjecutarTabu());
-            else
-                StartCoroutine(EjecutarRecocido());
+        if (usarBusquedaTabu)
+        {
+            usarBusquedaTabu = false;
+            Debug.Log("Lanzando TABU");
+            StartCoroutine(EjecutarTabu());
         }
     }
 
@@ -164,7 +170,7 @@ public class TSPManager : MonoBehaviour
     }
     IEnumerator EjecutarRecocido()
     {
-        Debug.Log("funcion tabu leida");
+        Debug.Log("funcion recocido leida");
         TSP_Solver solver = new TSP_Solver();
 
         float mejorDistancia = float.MaxValue;
@@ -173,7 +179,10 @@ public class TSPManager : MonoBehaviour
 
         for (int i = 0; i < run; i++)
         {
-            List<int> solucion = solver.SolucionRecocidoSimulado(maxFs, temperaturalInicial, alpha, 100, i);
+            List<int> solucion = solver.SolucionRecocidoSimulado(maxFs, temperaturalInicial, alpha, 100, i, (dist, temp) =>
+            {
+                ActualizarUI(dist, temp);
+            });
 
             if (solucion != null)
             {
@@ -204,6 +213,7 @@ public class TSPManager : MonoBehaviour
 
     IEnumerator EjecutarTabu()
     {
+        Debug.Log("funcion tabu leida");
         TSP_Solver solver = new TSP_Solver();
 
         float mejorDistancia = float.MaxValue;
@@ -217,6 +227,7 @@ public class TSPManager : MonoBehaviour
             if (solucion != null)
             {
                 float distancia = CalcularDistancia(solucion);
+                ActualizarUI(distancia);
                 Debug.Log("Distancia: " + distancia);
                 resultados.Add(distancia);
 
@@ -279,5 +290,25 @@ public class TSPManager : MonoBehaviour
         return escala;
     }
 
-   
+    void ActualizarUI(float distanciaActual, float temperatura = -1f)
+    {
+        float optimoReal = 870f;
+
+        float er = resultados.Count > 0 ? ER(resultados, optimoReal) : 0;
+        float dpp = resultados.Count > 0 ? DPP(resultados) : 0;
+        float gap = resultados.Count > 0 ? GAP(resultados, optimoReal) : 0;
+
+        string texto = "Distancia actual: " + distanciaActual.ToString("F2") + "\n" +
+                       "ER: " + er.ToString("F2") + "%\n" +
+                       "DPP: " + dpp.ToString("F2") + "%\n" +
+                       "GAP: " + gap.ToString("F2") + "%";
+
+       
+        if (temperatura > 0)
+        {
+            texto += "\nTemperatura: " + temperatura.ToString("F2");
+        }
+
+        textoInfo.text = texto;
+    }
 }
