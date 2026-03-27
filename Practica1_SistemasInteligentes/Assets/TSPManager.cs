@@ -206,9 +206,9 @@ public class TSPManager : MonoBehaviour
         float optimoReal = 870f;
 
         Debug.Log("===== RECOCIDO =====");
-        Debug.Log("ER: " + ER(resultados, optimoReal));
+        Debug.Log("ER: " + ER(resultados, mejorDistancia));
         Debug.Log("DPP: " + DPP(resultados));
-        Debug.Log("GAP: " + GAP(resultados, optimoReal));
+        Debug.Log("GAP: " + GAP(resultados, mejorDistancia));
     }
 
     IEnumerator EjecutarTabu()
@@ -248,9 +248,9 @@ public class TSPManager : MonoBehaviour
         float optimoReal = 870f;
 
         Debug.Log("===== TABU =====");
-        Debug.Log("ER: " + ER(resultados, optimoReal));
+        Debug.Log("ER: " + ER(resultados, mejorDistancia));
         Debug.Log("DPP: " + DPP(resultados));
-        Debug.Log("GAP: " + GAP(resultados, optimoReal));
+        Debug.Log("GAP: " + GAP(resultados, mejorDistancia));
     }
 
     float ER(List<float> longitudesRutas, float optimoReal)
