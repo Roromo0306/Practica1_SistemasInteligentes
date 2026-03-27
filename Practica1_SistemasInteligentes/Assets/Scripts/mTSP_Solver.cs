@@ -64,7 +64,7 @@ public class mTSP_Solver
 
 
 
-    private List<int> generarRutaInicialM(System.Random rand, int numAgentes = 1)
+    public List<int> generarRutaInicialM(System.Random rand, int numAgentes = 1)
     {
         int numCiudades = mTSPManager.Instance.NumCiudades;
         List<int> ruta = new List<int>();

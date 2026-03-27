@@ -225,12 +225,15 @@ public class mTSPManager : MonoBehaviour
         float mejorDistancia = float.MaxValue;
         List<int> mejorRutaActual = null;
 
-        float T = temperaturalInicial;
+        // 🔹 Generamos la ruta inicial y la usamos como referencia fija
+        List<int> rutaInicial = solver.generarRutaInicialM(new System.Random(0), 5);
+        float referencia = CalcularDistancia(rutaInicial);
 
-        float optimoConocido = 7542f; // referencia fija
+        float T = temperaturalInicial;
 
         for (int i = 0; i < run; i++)
         {
+            // 🔹 Obtenemos la solución con recocido simulado
             List<int> solucion = solver.SolucionRecocidoSimulado(maxFs, T, alpha, 20, i);
 
             if (solucion != null)
@@ -238,21 +241,22 @@ public class mTSPManager : MonoBehaviour
                 float distanciaActual = CalcularDistancia(solucion);
                 resultadosRecocido.Add(distanciaActual);
 
+                // 🔹 Actualizamos la mejor ruta encontrada hasta ahora
                 if (distanciaActual < mejorDistancia)
                 {
                     mejorDistancia = distanciaActual;
                     mejorRutaActual = solucion;
-
                     DibujarRuta(mejorRutaActual);
                 }
 
-                float referencia = mejorDistancia;
-
+                // 🔹 Calculamos métricas respecto a la ruta inicial
                 float er = (distanciaActual - referencia) / referencia * 100f;
                 float gap = (resultadosRecocido.Average() - referencia) / referencia * 100f;
-                float dpp = resultadosRecocido.Count > 1 ? DPP(resultadosRecocido) : 0f;
+                float dpp = resultadosRecocido.Count > 1
+                    ? (resultadosRecocido.Max() - resultadosRecocido.Min()) / resultadosRecocido.Average() * 100f
+                                : 0f;
 
-
+                // 🔹 Mostramos info en UI
                 textoInfo.text =
                     $"ALGORITMO: RECOCIDO SIMULADO\n" +
                     $"Iteración: {i + 1}\n" +
@@ -265,7 +269,9 @@ public class mTSPManager : MonoBehaviour
                 Debug.Log($"[SA] Iter {i + 1} | Dist: {distanciaActual:F2} | ER: {er:F2}% | GAP: {gap:F2}% | DPP: {dpp:F2}% | T: {T:F2}");
             }
 
+            // 🔹 Reducimos la temperatura
             T *= alpha;
+
             yield return new WaitForSeconds(0.05f);
         }
 
