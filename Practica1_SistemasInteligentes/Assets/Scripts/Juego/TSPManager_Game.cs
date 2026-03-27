@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
+using UnityEngine.SceneManagement;
 
 public class TSPManager_Game : MonoBehaviour
 {
@@ -40,6 +41,11 @@ public class TSPManager_Game : MonoBehaviour
     void Update()
     {
         ActualizarDistanciaJugador();
+
+        if (Input.GetKeyDown(KeyCode.Space))
+        {
+            Reiniciar();
+        }
     }
 
     void ActualizarDistanciaJugador()
@@ -93,5 +99,11 @@ public class TSPManager_Game : MonoBehaviour
         if (eficiencia >= 70) return "B";
         if (eficiencia >= 50) return "C";
         return "D";
+    }
+
+
+    public void Reiniciar()
+    {
+        SceneManager.LoadScene("GameTSP");
     }
 }
