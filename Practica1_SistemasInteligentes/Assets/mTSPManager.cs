@@ -225,23 +225,17 @@ public class mTSPManager : MonoBehaviour
         float mejorDistancia = float.MaxValue;
         List<int> mejorRutaActual = null;
 
-        // 🔹 Generamos la ruta inicial y la usamos como referencia fija
-        List<int> rutaInicial = solver.generarRutaInicialM(new System.Random(0), 5);
-        float referencia = CalcularDistancia(rutaInicial);
-
         float T = temperaturalInicial;
 
         for (int i = 0; i < run; i++)
         {
-            // 🔹 Obtenemos la solución con recocido simulado
-            List<int> solucion = solver.SolucionRecocidoSimulado(maxFs, T, alpha, 20, i);
+            List<int> solucion = solver.SolucionRecocidoSimulado(maxFs, T, alpha, 50, i);
 
             if (solucion != null)
             {
                 float distanciaActual = CalcularDistancia(solucion);
                 resultadosRecocido.Add(distanciaActual);
 
-                // 🔹 Actualizamos la mejor ruta encontrada hasta ahora
                 if (distanciaActual < mejorDistancia)
                 {
                     mejorDistancia = distanciaActual;
@@ -249,14 +243,11 @@ public class mTSPManager : MonoBehaviour
                     DibujarRuta(mejorRutaActual);
                 }
 
-                // 🔹 Calculamos métricas respecto a la ruta inicial
-                float er = (distanciaActual - referencia) / referencia * 100f;
-                float gap = (resultadosRecocido.Average() - referencia) / referencia * 100f;
-                float dpp = resultadosRecocido.Count > 1
-                    ? (resultadosRecocido.Max() - resultadosRecocido.Min()) / resultadosRecocido.Average() * 100f
-                                : 0f;
+                // 🔹 Métricas actualizadas correctamente
+                float er = (distanciaActual - mejorDistancia) / mejorDistancia * 100f; // ER relativo a mejor hasta ahora
+                float gap = (resultadosRecocido.Average() - mejorDistancia) / mejorDistancia * 100f; // GAP promedio respecto al mejor
+                float dpp = DPP(resultadosRecocido); // dispersión real
 
-                // 🔹 Mostramos info en UI
                 textoInfo.text =
                     $"ALGORITMO: RECOCIDO SIMULADO\n" +
                     $"Iteración: {i + 1}\n" +
@@ -269,14 +260,13 @@ public class mTSPManager : MonoBehaviour
                 Debug.Log($"[SA] Iter {i + 1} | Dist: {distanciaActual:F2} | ER: {er:F2}% | GAP: {gap:F2}% | DPP: {dpp:F2}% | T: {T:F2}");
             }
 
-            // 🔹 Reducimos la temperatura
             T *= alpha;
-
             yield return new WaitForSeconds(0.05f);
         }
 
         Debug.Log("Recocido simulado finalizado. Mejor distancia: " + mejorDistancia);
     }
+
 
 
     IEnumerator EjecutarTabu()
@@ -341,24 +331,25 @@ public class mTSPManager : MonoBehaviour
         }
 
 
-        float DPP(List<float> longitudesRutas) //Desviacion porcentual  (aplicarlo con tabu search y recocido)
+    float DPP(List<float> longitudesRutas)
+    {
+        if (longitudesRutas.Count <= 1)
+            return 0f;
+
+        float media = longitudesRutas.Average();
+        float varianza = 0f;
+
+        foreach (var longitud in longitudesRutas)
         {
-            float media = longitudesRutas.Average();
-            float varianza = 0;
-
-            foreach (var longitud in longitudesRutas)
-            {
-                varianza += Mathf.Pow((longitud - media), 2);
-
-            }
-            varianza /= longitudesRutas.Count;
-
-            float desviacionEstandar = Mathf.Sqrt(varianza);
-
-            return (desviacionEstandar / media) * 100;
+            varianza += Mathf.Pow((longitud - media), 2);
         }
+        varianza /= longitudesRutas.Count;
 
-        float GAP(List<float> longitudesRutas, float optimo) //(aplicarlo con tabu search y recocido)
+        float desviacionEstandar = Mathf.Sqrt(varianza);
+        return (desviacionEstandar / media) * 100f;
+    }
+
+    float GAP(List<float> longitudesRutas, float optimo) //(aplicarlo con tabu search y recocido)
         {
             float media = longitudesRutas.Average();
             return ((media - optimo) / optimo) * 100;
