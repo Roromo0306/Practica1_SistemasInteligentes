@@ -298,12 +298,15 @@ public class TSPManager : MonoBehaviour
         float dpp = resultados.Count > 0 ? DPP(resultados) : 0;
         float gap = resultados.Count > 0 ? GAP(resultados, optimoReal) : 0;
 
+
         string texto = "Distancia actual: " + distanciaActual.ToString("F2") + "\n" +
                        "ER: " + er.ToString("F2") + "%\n" +
                        "DPP: " + dpp.ToString("F2") + "%\n" +
                        "GAP: " + gap.ToString("F2") + "%";
 
        
+
+
         if (temperatura > 0)
         {
             texto += "\nTemperatura: " + temperatura.ToString("F2");
