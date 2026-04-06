@@ -10,15 +10,12 @@ public class TSP_Solver_Game
         coords = coordenadas;
     }
 
-    // MÉTODO PRINCIPAL
     public List<int> CalcularTSP()
     {
         return BusquedaTabu(500, 50);
     }
 
-    // =========================
-    // TABU SEARCH
-    // =========================
+  
     private List<int> BusquedaTabu(int maxIter, int tabuSize)
     {
         List<int> actual = GenerarRutaInicial();
@@ -35,7 +32,6 @@ public class TSP_Solver_Game
             float mejorCosteVecino = float.MaxValue;
             string mejorMovimiento = "";
 
-            // explorar vecinos con 2-opt
             for (int k = 0; k < 50; k++)
             {
                 int i = Random.Range(1, actual.Count - 2);
@@ -76,15 +72,13 @@ public class TSP_Solver_Game
             }
         }
 
-        // mejora final con 2-opt puro
+        
         mejor = Mejorar2Opt(mejor);
 
         return mejor;
     }
 
-    // =========================
-    // 2-OPT PURO
-    // =========================
+  
     private List<int> Mejorar2Opt(List<int> ruta)
     {
         bool mejora = true;
@@ -112,9 +106,7 @@ public class TSP_Solver_Game
         return ruta;
     }
 
-    // =========================
-    // RUTA INICIAL
-    // =========================
+
     private List<int> GenerarRutaInicial()
     {
         List<int> ruta = new List<int>();
@@ -133,9 +125,7 @@ public class TSP_Solver_Game
         return ruta;
     }
 
-    // =========================
-    // DISTANCIA
-    // =========================
+
     public float CalcularDistancia(List<int> ruta)
     {
         float total = 0f;

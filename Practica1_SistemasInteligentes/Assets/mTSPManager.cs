@@ -63,7 +63,7 @@ public class mTSPManager : MonoBehaviour
         if (lineRenderer == null)
             lineRenderer = gameObject.AddComponent<LineRenderer>();
 
-        // CONFIGURACIÓN NECESARIA PARA QUE SE VEA
+        
         lineRenderer.startWidth = 0.2f;
         lineRenderer.endWidth = 0.2f;
         lineRenderer.material = new Material(Shader.Find("Sprites/Default"));
@@ -243,10 +243,10 @@ public class mTSPManager : MonoBehaviour
                     DibujarRuta(mejorRutaActual);
                 }
 
-                // 🔹 Métricas actualizadas correctamente
-                float er = (distanciaActual - mejorDistancia) / mejorDistancia * 100f; // ER relativo a mejor hasta ahora
-                float gap = (resultadosRecocido.Average() - mejorDistancia) / mejorDistancia * 100f; // GAP promedio respecto al mejor
-                float dpp = DPP(resultadosRecocido); // dispersión real
+                
+                float er = (distanciaActual - mejorDistancia) / mejorDistancia * 100f;
+                float gap = (resultadosRecocido.Average() - mejorDistancia) / mejorDistancia * 100f; 
+                float dpp = DPP(resultadosRecocido); 
 
                 textoInfo.text =
                     $"ALGORITMO: RECOCIDO SIMULADO\n" +
@@ -318,7 +318,7 @@ public class mTSPManager : MonoBehaviour
         Debug.Log("Búsqueda Tabú finalizada. Mejor distancia: " + mejorDistancia);
     }
 
-    float ER(List<float> longitudesRutas, float optimo) //error relativo (aplicarlo con tabu search y recocido)
+    float ER(List<float> longitudesRutas, float optimo) 
         {
             float suma = 0;
             foreach (var longitud in longitudesRutas)
@@ -349,14 +349,13 @@ public class mTSPManager : MonoBehaviour
         return (desviacionEstandar / media) * 100f;
     }
 
-    float GAP(List<float> longitudesRutas, float optimo) //(aplicarlo con tabu search y recocido)
+    float GAP(List<float> longitudesRutas, float optimo) 
         {
             float media = longitudesRutas.Average();
             return ((media - optimo) / optimo) * 100;
         }
 
-        //añadir como baja el recocido simulado y lineas de convergencia
-        //Añadir a un agente/personaje que recorra esas rutas
+      
 
 }
 
