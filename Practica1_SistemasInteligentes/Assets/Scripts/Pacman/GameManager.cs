@@ -37,6 +37,6 @@ public class GameManager : MonoBehaviour
             return;
         }
 
-        StartCoroutine(RoundManager.Instance.ResetPositions());
+        //StartCoroutine(RoundManager.Instance.ResetPositions());
     }
 }
