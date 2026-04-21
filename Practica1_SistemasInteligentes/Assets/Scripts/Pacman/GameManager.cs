@@ -23,13 +23,13 @@ public class GameManager : MonoBehaviour
     public void AddScore(int amount)
     {
         score += amount;
-        UIManager.Instance.Refresh(score, lives);
+        UI_Manager.Instance.Refresh(score, lives);
     }
 
     public void LoseLife()
     {
         lives--;
-        UIManager.Instance.Refresh(score, lives);
+        UI_Manager.Instance.Refresh(score, lives);
 
         if (lives <= 0)
         {
@@ -37,6 +37,6 @@ public class GameManager : MonoBehaviour
             return;
         }
 
-        //StartCoroutine(RoundManager.Instance.ResetPositions());
+        StartCoroutine(RoundManager.Instance.ResetPositions());
     }
 }

@@ -1,9 +1,9 @@
 using TMPro;
 using UnityEngine;
 
-public class UIManager : MonoBehaviour
+public class UI_Manager : MonoBehaviour
 {
-    public static UIManager Instance;
+    public static UI_Manager Instance;
 
     [SerializeField] private TMP_Text scoreText;
     [SerializeField] private TMP_Text livesText;

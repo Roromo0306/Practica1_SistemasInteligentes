@@ -1,12 +1,20 @@
 using System.Collections.Generic;
-using UnityEngine;
+//using System.Diagnostics;
 using System.Linq;
-
+using UnityEngine;
+public enum GhostRole
+{
+    DirectChase,
+    Ambush,
+    SideCover,
+    Blocker
+}
 public class GhostTargetBuilder : MonoBehaviour
 {
     [SerializeField] private Transform pacman;
     [SerializeField] private Vector2 predictionOffset = new Vector2(2f, 0f);
     [SerializeField] private Transform assignedCorner;
+    [SerializeField] private GhostRole role;
 
     public List<MazeNode> BuildCandidateNodes(Transform ghost)
     {
@@ -38,6 +46,9 @@ public class GhostTargetBuilder : MonoBehaviour
             if (!result.Contains(n))
                 result.Add(n);
 
+
+        Debug.Log($"{gameObject.name} usa esquina: {(assignedCorner != null ? assignedCorner.name : "NULL")}");
+       
         return result;
     }
 }

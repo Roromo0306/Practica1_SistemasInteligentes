@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
+using System.Collections;
 public class RoundManager : MonoBehaviour
 {
     public static RoundManager Instance;
@@ -14,7 +15,7 @@ public class RoundManager : MonoBehaviour
         Instance = this;
     }
 
-    /*public IEnumerator ResetPositions()
+    public IEnumerator ResetPositions()
     {
         yield return new WaitForSeconds(1f);
 
@@ -25,5 +26,5 @@ public class RoundManager : MonoBehaviour
             ghosts[i].transform.position = ghostSpawns[i].position;
             ghosts[i].ResetGhostState();
         }
-    }*/
+    }
 }
