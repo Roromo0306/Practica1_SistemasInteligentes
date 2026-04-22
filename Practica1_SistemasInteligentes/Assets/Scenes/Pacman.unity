@@ -248,6 +248,12 @@ MonoBehaviour:
   predictionOffset: {x: 2, y: 0}
   assignedCorner: {fileID: 1579003872}
   role: 2
+  powerPellets:
+  - {fileID: 492795322531282037}
+  - {fileID: 1456811510}
+  - {fileID: 1125253033}
+  - {fileID: 856204126}
+  tunnelPoints: []
 --- !u!114 &16150219
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1794,6 +1800,12 @@ MonoBehaviour:
   predictionOffset: {x: 2, y: 0}
   assignedCorner: {fileID: 1181615303}
   role: 3
+  powerPellets:
+  - {fileID: 492795322531282037}
+  - {fileID: 1456811510}
+  - {fileID: 1125253033}
+  - {fileID: 856204126}
+  tunnelPoints: []
 --- !u!114 &1073159423
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2406,6 +2418,12 @@ MonoBehaviour:
   predictionOffset: {x: 2, y: 0}
   assignedCorner: {fileID: 1049244782}
   role: 0
+  powerPellets:
+  - {fileID: 492795322531282037}
+  - {fileID: 1456811510}
+  - {fileID: 1125253033}
+  - {fileID: 856204126}
+  tunnelPoints: []
 --- !u!114 &1191104917
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2663,6 +2681,12 @@ MonoBehaviour:
   predictionOffset: {x: 2, y: 0}
   assignedCorner: {fileID: 1737725349}
   role: 1
+  powerPellets:
+  - {fileID: 492795322531282037}
+  - {fileID: 1456811510}
+  - {fileID: 1125253033}
+  - {fileID: 856204126}
+  tunnelPoints: []
 --- !u!114 &1237786492
 MonoBehaviour:
   m_ObjectHideFlags: 0

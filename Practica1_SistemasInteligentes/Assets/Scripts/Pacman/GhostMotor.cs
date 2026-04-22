@@ -13,6 +13,7 @@ public class GhostMotor : MonoBehaviour
     {
         currentPath = path ?? new List<MazeNode>();
         currentIndex = 0;
+        Debug.Log($"{gameObject.name} nueva ruta: {(path == null ? 0 : path.Count)} nodos");
     }
 
     private void Update()

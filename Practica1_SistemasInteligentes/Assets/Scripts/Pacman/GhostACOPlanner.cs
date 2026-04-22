@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 public class GhostACOPlanner : MonoBehaviour
@@ -63,7 +64,7 @@ public class GhostACOPlanner : MonoBehaviour
         if (bestPath != null)
         {
             bestPath = TwoOpt.Improve(bestPath);
-            motor.SetPath(bestPath);
+            Debug.Log($"{gameObject.name} bestPath: {string.Join(" -> ", bestPath.Select(n => n.id))}"); motor.SetPath(bestPath);
         }
     }
 
@@ -108,7 +109,11 @@ public class GhostACOPlanner : MonoBehaviour
 
         foreach (var n in unvisited)
         {
-            float tau = pheromones[(current.id, n.id)];
+            if (n == current || n.id == current.id)
+                continue;
+
+            if (!pheromones.TryGetValue((current.id, n.id), out float tau))
+                tau = 1f;
             float dist = Vector2.Distance(current.transform.position, n.transform.position);
             float eta = 1f / Mathf.Max(dist, 0.001f);
 
@@ -116,7 +121,8 @@ public class GhostACOPlanner : MonoBehaviour
             probs.Add((n, value));
             total += value;
         }
-
+        if (probs.Count == 0)
+            return null;
         float r = Random.value * total;
         float acc = 0f;
 

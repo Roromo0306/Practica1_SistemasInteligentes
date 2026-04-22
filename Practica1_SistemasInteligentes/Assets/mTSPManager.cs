@@ -7,44 +7,67 @@ using TMPro;
 
 public class mTSPManager : MonoBehaviour
 {
-    [Header("Seleccion de algoritmo")]
+    [Header("Selección de algoritmo")]
     public bool usarBusquedaTabu = false;
-    public bool calcularRuta = false;
+    public bool calcularRuta = false; // recocido
+    public bool usarACO = false;
+    public bool usarPSO = false;
 
     [Header("Crear Ciudad")]
     public string ArchivoTSP;
     public GameObject prefabCiudad;
     public float escala = 0.01f;
 
-    [Header("Párametos recocido simulado")]
+    [Header("Parámetros generales")]
     public int run = 30;
+    public int numeroAgentes = 5;
+
+    [Header("Recocido simulado")]
     public int maxFs = 50000;
     public float temperaturalInicial = 1000f;
-    public float alpha = 0.995f; //En cada paso se baja la temperatura 0.005
+    public float alpha = 0.995f;
 
-    [Header("Metricas")]
-    public float mejorRuta = 7542;
+    [Header("Tabú")]
+    public int maxIteracionesTabu = 5000;
+    public int tamanoListaTabu = 50;
+
+    [Header("ACO")]
+    public int iteracionesACO = 250;
+    public int numeroHormigas = 30;
+    public float alphaACO = 1f;
+    public float betaACO = 5f;
+    [Range(0.01f, 0.99f)]
+    public float evaporacionACO = 0.5f;
+    public float qACO = 100f;
+
+    [Header("PSO")]
+    public int iteracionesPSO = 250;
+    public int numeroParticulas = 35;
+    public float inerciaPSO = 0.72f;
+    public float c1PSO = 1.49f;
+    public float c2PSO = 1.49f;
+
+    [Header("Métricas")]
+    [Tooltip("Pon aquí el mejor valor conocido de TU mTSP con 5 agentes y esta función objetivo. Si no lo conoces, deja -1.")]
+    public float optimoConocidoMTSP = -1f;
 
     [Header("UI")]
     public TextMeshProUGUI textoInfo;
 
-    float optimoConocido = 7542f;
-
     private List<Vector3> coordenadasCiudades = new List<Vector3>();
     private List<Transform> objetosCiudades = new List<Transform>();
-    private LineRenderer lineRenderer;
     private List<LineRenderer> lineasAgentes = new List<LineRenderer>();
-    private List<float> resultadosRecocido = new List<float>();
-    private List<float> resultadosTabu = new List<float>();
+
+    private List<float> resultadosActuales = new List<float>();
 
     Color[] colores = new Color[]
-{
-    Color.red,
-    Color.blue,
-    Color.green,
-    Color.yellow,
-    Color.magenta
-};
+    {
+        Color.red,
+        Color.blue,
+        Color.green,
+        Color.yellow,
+        Color.magenta
+    };
 
     public static mTSPManager Instance;
     public List<Vector3> Coordenadas => coordenadasCiudades;
@@ -54,27 +77,12 @@ public class mTSPManager : MonoBehaviour
     {
         Instance = this;
     }
-    // Start is called before the first frame update
+
     void Start()
     {
-
-        lineRenderer = GetComponent<LineRenderer>();
-
-        if (lineRenderer == null)
-            lineRenderer = gameObject.AddComponent<LineRenderer>();
-
-        
-        lineRenderer.startWidth = 0.2f;
-        lineRenderer.endWidth = 0.2f;
-        lineRenderer.material = new Material(Shader.Find("Sprites/Default"));
-        lineRenderer.positionCount = 0;
-        lineRenderer.useWorldSpace = true;
-
         CargarArchivoTSP();
-
     }
 
-    // Update is called once per frame
     void Update()
     {
         if (calcularRuta)
@@ -89,6 +97,20 @@ public class mTSPManager : MonoBehaviour
             Debug.Log("Lanzando TABU");
             StartCoroutine(EjecutarTabu());
         }
+
+        if (usarACO)
+        {
+            usarACO = false;
+            Debug.Log("Lanzando ACO");
+            StartCoroutine(EjecutarACO());
+        }
+
+        if (usarPSO)
+        {
+            usarPSO = false;
+            Debug.Log("Lanzando PSO");
+            StartCoroutine(EjecutarPSO());
+        }
     }
 
     void CargarArchivoTSP()
@@ -96,21 +118,32 @@ public class mTSPManager : MonoBehaviour
         string ruta = Path.Combine(Application.streamingAssetsPath, ArchivoTSP);
         string[] lineas = File.ReadAllLines(ruta);
 
+        coordenadasCiudades.Clear();
+
         foreach (string linea in lineas)
         {
             if (linea.Any(char.IsLetter) || string.IsNullOrWhiteSpace(linea))
-            {
                 continue;
-            }
 
-            string[] partes = linea.Split(" "); //Creamos una lista de strings que tiene en cada elemento numeros que van separados por espacios en el archivo TSP
+            string[] partes = linea.Split(" ");
             float X = float.Parse(partes[1]);
             float Y = float.Parse(partes[2]);
-            coordenadasCiudades.Add(new Vector3(X * escala, Y * escala, 0));
 
+            coordenadasCiudades.Add(new Vector3(X * escala, Y * escala, 0));
         }
 
         DibujarCiudades();
+    }
+
+    void DibujarCiudades()
+    {
+        foreach (Vector3 pos in coordenadasCiudades)
+        {
+            GameObject ciudad = Instantiate(prefabCiudad, pos, Quaternion.identity);
+            objetosCiudades.Add(ciudad.transform);
+        }
+
+        Debug.Log("Ciudades creadas: " + objetosCiudades.Count);
     }
 
     void DibujarRuta(List<int> ruta)
@@ -121,13 +154,56 @@ public class mTSPManager : MonoBehaviour
             return;
         }
 
-        // Limpiar líneas anteriores
         foreach (var lr in lineasAgentes)
         {
-            Destroy(lr.gameObject);
+            if (lr != null)
+                Destroy(lr.gameObject);
         }
         lineasAgentes.Clear();
 
+        List<List<int>> rutasAgentes = SepararSubRutas(ruta);
+
+        for (int a = 0; a < rutasAgentes.Count; a++)
+        {
+            GameObject lineaObj = new GameObject("RutaAgente_" + a);
+            LineRenderer lr = lineaObj.AddComponent<LineRenderer>();
+
+            lr.startWidth = 0.2f;
+            lr.endWidth = 0.2f;
+            lr.material = new Material(Shader.Find("Sprites/Default"));
+            lr.startColor = colores[a % colores.Length];
+            lr.endColor = colores[a % colores.Length];
+            lr.useWorldSpace = true;
+
+            List<int> subRuta = rutasAgentes[a];
+
+            if (subRuta.Count == 0)
+            {
+                lr.positionCount = 2;
+                lr.SetPosition(0, objetosCiudades[0].position);
+                lr.SetPosition(1, objetosCiudades[0].position);
+            }
+            else
+            {
+                lr.positionCount = subRuta.Count + 2;
+                lr.SetPosition(0, objetosCiudades[0].position);
+
+                for (int i = 0; i < subRuta.Count; i++)
+                {
+                    lr.SetPosition(i + 1, objetosCiudades[subRuta[i]].position);
+                }
+
+                lr.SetPosition(subRuta.Count + 1, objetosCiudades[0].position);
+            }
+
+            lineasAgentes.Add(lr);
+        }
+
+        Debug.Log("Rutas dibujadas: " + rutasAgentes.Count);
+    }
+
+    List<List<int>> SepararSubRutas(List<int> ruta)
+    {
         List<List<int>> rutasAgentes = new List<List<int>>();
         List<int> actual = new List<int>();
 
@@ -144,82 +220,55 @@ public class mTSPManager : MonoBehaviour
             }
         }
 
-        if (actual.Count > 0)
-            rutasAgentes.Add(actual);
+        rutasAgentes.Add(new List<int>(actual));
 
-        Color[] colores = new Color[]
-        {
-        Color.red,
-        Color.blue,
-        Color.green,
-        Color.yellow,
-        Color.magenta
-        };
+        while (rutasAgentes.Count < numeroAgentes)
+            rutasAgentes.Add(new List<int>());
 
-        for (int a = 0; a < rutasAgentes.Count; a++)
-        {
-            GameObject lineaObj = new GameObject("RutaAgente_" + a);
-            LineRenderer lr = lineaObj.AddComponent<LineRenderer>();
-
-            lr.startWidth = 0.2f;
-            lr.endWidth = 0.2f;
-            lr.material = new Material(Shader.Find("Sprites/Default"));
-            lr.startColor = colores[a % colores.Length];
-            lr.endColor = colores[a % colores.Length];
-
-            List<int> subRuta = rutasAgentes[a];
-
-            lr.positionCount = subRuta.Count + 2;
-
-            // Inicio en almacén (0)
-            lr.SetPosition(0, objetosCiudades[0].position);
-
-            for (int i = 0; i < subRuta.Count; i++)
-            {
-                lr.SetPosition(i + 1, objetosCiudades[subRuta[i]].position);
-            }
-
-            // Volver al almacén
-            lr.SetPosition(subRuta.Count + 1, objetosCiudades[0].position);
-
-            lineasAgentes.Add(lr);
-        }
-
-        Debug.Log("Rutas dibujadas: " + rutasAgentes.Count);
+        return rutasAgentes;
     }
 
-    void DibujarCiudades()
+    float CalcularDistanciaObjetivo(List<int> ruta, float pesoAgente = 0.5f)
     {
-        foreach (Vector3 pos in coordenadasCiudades)
-        {
-            GameObject ciudad = Instantiate(prefabCiudad, pos, Quaternion.identity);
-            objetosCiudades.Add(ciudad.transform);
-        }
+        List<List<int>> subRutas = SepararSubRutas(ruta);
 
-        Debug.Log("Ciudades creadas: " + objetosCiudades.Count);
-
-
-    }
-    float CalcularDistancia(List<int> ruta)
-    {
         float distanciaTotal = 0f;
+        float distanciaMaxAgente = 0f;
 
-        for (int i = 0; i < ruta.Count - 1; i++)
+        foreach (List<int> subRuta in subRutas)
         {
-            // Evitar índices inválidos (-1)
-            if (ruta[i] == -1 || ruta[i + 1] == -1)
-                continue;
+            float distanciaSubRuta = CalcularLongitudSubRuta(subRuta);
+            distanciaTotal += distanciaSubRuta;
 
-            Vector3 a = coordenadasCiudades[ruta[i]];
-            Vector3 b = coordenadasCiudades[ruta[i + 1]];
-            distanciaTotal += Vector3.Distance(a, b);
+            if (distanciaSubRuta > distanciaMaxAgente)
+                distanciaMaxAgente = distanciaSubRuta;
         }
 
-        return distanciaTotal;
+        return distanciaTotal + pesoAgente * distanciaMaxAgente;
     }
+
+    float CalcularLongitudSubRuta(List<int> subRuta)
+    {
+        if (subRuta == null || subRuta.Count == 0)
+            return 0f;
+
+        float distancia = 0f;
+
+        distancia += Vector3.Distance(coordenadasCiudades[0], coordenadasCiudades[subRuta[0]]);
+
+        for (int i = 0; i < subRuta.Count - 1; i++)
+        {
+            distancia += Vector3.Distance(coordenadasCiudades[subRuta[i]], coordenadasCiudades[subRuta[i + 1]]);
+        }
+
+        distancia += Vector3.Distance(coordenadasCiudades[subRuta[subRuta.Count - 1]], coordenadasCiudades[0]);
+
+        return distancia;
+    }
+
     IEnumerator EjecutarRecocido()
     {
-        resultadosRecocido.Clear();
+        resultadosActuales.Clear();
         mTSP_Solver solver = new mTSP_Solver();
 
         float mejorDistancia = float.MaxValue;
@@ -233,31 +282,18 @@ public class mTSPManager : MonoBehaviour
 
             if (solucion != null)
             {
-                float distanciaActual = CalcularDistancia(solucion);
-                resultadosRecocido.Add(distanciaActual);
+                float costeActual = CalcularDistanciaObjetivo(solucion);
+                resultadosActuales.Add(costeActual);
 
-                if (distanciaActual < mejorDistancia)
+                if (costeActual < mejorDistancia)
                 {
-                    mejorDistancia = distanciaActual;
+                    mejorDistancia = costeActual;
                     mejorRutaActual = solucion;
                     DibujarRuta(mejorRutaActual);
                 }
 
-                
-                float er = (distanciaActual - mejorDistancia) / mejorDistancia * 100f;
-                float gap = (resultadosRecocido.Average() - mejorDistancia) / mejorDistancia * 100f; 
-                float dpp = DPP(resultadosRecocido); 
-
-                textoInfo.text =
-                    $"ALGORITMO: RECOCIDO SIMULADO\n" +
-                    $"Iteración: {i + 1}\n" +
-                    $"Distancia: {distanciaActual:F2}\n" +
-                    $"Temperatura: {T:F2}\n" +
-                    $"ER: {er:F2}%\n" +
-                    $"GAP: {gap:F2}%\n" +
-                    $"DPP: {dpp:F2}%";
-
-                Debug.Log($"[SA] Iter {i + 1} | Dist: {distanciaActual:F2} | ER: {er:F2}% | GAP: {gap:F2}% | DPP: {dpp:F2}% | T: {T:F2}");
+                ActualizarUI("RECOCIDO SIMULADO", i + 1, costeActual, mejorDistancia, T);
+                Debug.Log($"[SA] Iter {i + 1} | Coste: {costeActual:F2}");
             }
 
             T *= alpha;
@@ -267,49 +303,32 @@ public class mTSPManager : MonoBehaviour
         Debug.Log("Recocido simulado finalizado. Mejor distancia: " + mejorDistancia);
     }
 
-
-
     IEnumerator EjecutarTabu()
     {
-        resultadosTabu.Clear();
+        resultadosActuales.Clear();
         mTSP_Solver solver = new mTSP_Solver();
 
         float mejorDistancia = float.MaxValue;
         List<int> mejorRutaActual = null;
 
-        float optimoConocido = 7542f; // referencia fija
-
         for (int i = 0; i < run; i++)
         {
-            List<int> solucion = solver.SolucionBusquedaTabu(maxFs, 50, i);
+            List<int> solucion = solver.SolucionBusquedaTabu(maxIteracionesTabu, tamanoListaTabu, i);
 
             if (solucion != null)
             {
-                float distanciaActual = CalcularDistancia(solucion);
-                resultadosTabu.Add(distanciaActual);
+                float costeActual = CalcularDistanciaObjetivo(solucion);
+                resultadosActuales.Add(costeActual);
 
-                if (distanciaActual < mejorDistancia)
+                if (costeActual < mejorDistancia)
                 {
-                    mejorDistancia = distanciaActual;
+                    mejorDistancia = costeActual;
                     mejorRutaActual = solucion;
                     DibujarRuta(mejorRutaActual);
                 }
 
-                float referencia = mejorDistancia;
-
-                float er = (distanciaActual - referencia) / referencia * 100f;
-                float gap = (resultadosTabu.Average() - referencia) / referencia * 100f;
-                float dpp = resultadosTabu.Count > 1 ? DPP(resultadosTabu) : 0f;
-
-                textoInfo.text =
-                    $"ALGORITMO: TABU SEARCH\n" +
-                    $"Iteración: {i + 1}\n" +
-                    $"Distancia: {distanciaActual:F2}\n" +
-                    $"ER: {er:F2}%\n" +
-                    $"GAP: {gap:F2}%\n" +
-                    $"DPP: {dpp:F2}%";
-
-                Debug.Log($"[TABU] Iter {i + 1} | Dist: {distanciaActual:F2} | ER: {er:F2}% | GAP: {gap:F2}% | DPP: {dpp:F2}%");
+                ActualizarUI("TABU SEARCH", i + 1, costeActual, mejorDistancia);
+                Debug.Log($"[TABU] Iter {i + 1} | Coste: {costeActual:F2}");
             }
 
             yield return new WaitForSeconds(0.05f);
@@ -318,44 +337,154 @@ public class mTSPManager : MonoBehaviour
         Debug.Log("Búsqueda Tabú finalizada. Mejor distancia: " + mejorDistancia);
     }
 
-    float ER(List<float> longitudesRutas, float optimo) 
+    IEnumerator EjecutarACO()
+    {
+        resultadosActuales.Clear();
+        mTSP_Solver solver = new mTSP_Solver();
+
+        float mejorDistancia = float.MaxValue;
+        List<int> mejorRutaActual = null;
+
+        for (int i = 0; i < run; i++)
         {
-            float suma = 0;
-            foreach (var longitud in longitudesRutas)
+            List<int> solucion = solver.SolucionACO(
+                iteracionesACO,
+                numeroHormigas,
+                alphaACO,
+                betaACO,
+                evaporacionACO,
+                qACO,
+                i);
+
+            if (solucion != null)
             {
-                float er = (longitud - optimo) / optimo;
-                suma += er;
+                float costeActual = CalcularDistanciaObjetivo(solucion);
+                resultadosActuales.Add(costeActual);
+
+                if (costeActual < mejorDistancia)
+                {
+                    mejorDistancia = costeActual;
+                    mejorRutaActual = solucion;
+                    DibujarRuta(mejorRutaActual);
+                }
+
+                ActualizarUI("ACO", i + 1, costeActual, mejorDistancia);
+                Debug.Log($"[ACO] Iter {i + 1} | Coste: {costeActual:F2}");
             }
 
-            return (suma / longitudesRutas.Count) * 100;
+            yield return new WaitForSeconds(0.05f);
         }
 
+        Debug.Log("ACO finalizado. Mejor distancia: " + mejorDistancia);
+    }
+
+    IEnumerator EjecutarPSO()
+    {
+        resultadosActuales.Clear();
+        mTSP_Solver solver = new mTSP_Solver();
+
+        float mejorDistancia = float.MaxValue;
+        List<int> mejorRutaActual = null;
+
+        for (int i = 0; i < run; i++)
+        {
+            List<int> solucion = solver.SolucionPSO(
+                iteracionesPSO,
+                numeroParticulas,
+                inerciaPSO,
+                c1PSO,
+                c2PSO,
+                i);
+
+            if (solucion != null)
+            {
+                float costeActual = CalcularDistanciaObjetivo(solucion);
+                resultadosActuales.Add(costeActual);
+
+                if (costeActual < mejorDistancia)
+                {
+                    mejorDistancia = costeActual;
+                    mejorRutaActual = solucion;
+                    DibujarRuta(mejorRutaActual);
+                }
+
+                ActualizarUI("PSO", i + 1, costeActual, mejorDistancia);
+                Debug.Log($"[PSO] Iter {i + 1} | Coste: {costeActual:F2}");
+            }
+
+            yield return new WaitForSeconds(0.05f);
+        }
+
+        Debug.Log("PSO finalizado. Mejor distancia: " + mejorDistancia);
+    }
+
+    void ActualizarUI(string algoritmo, int iteracion, float costeActual, float mejorDistancia, float temperatura = -1f)
+    {
+        float dpp = DPP(resultadosActuales);
+        string erTexto = "N/A";
+        string gapTexto = "N/A";
+
+        if (optimoConocidoMTSP > 0f)
+        {
+            erTexto = ER(resultadosActuales, optimoConocidoMTSP).ToString("F2") + "%";
+            gapTexto = GAP(mejorDistancia, optimoConocidoMTSP).ToString("F2") + "%";
+        }
+
+        string texto =
+            $"ALGORITMO: {algoritmo}\n" +
+            $"Run: {iteracion}\n" +
+            $"Coste actual: {costeActual:F2}\n" +
+            $"Mejor coste: {mejorDistancia:F2}\n" +
+            $"ER: {erTexto}\n" +
+            $"GAP: {gapTexto}\n" +
+            $"DPP: {dpp:F2}%";
+
+        if (temperatura > 0f)
+            texto += $"\nTemperatura: {temperatura:F2}";
+
+        textoInfo.text = texto;
+    }
+
+    float ER(List<float> longitudesRutas, float optimo)
+    {
+        if (longitudesRutas == null || longitudesRutas.Count == 0 || optimo <= 0f)
+            return 0f;
+
+        float suma = 0f;
+        foreach (float longitud in longitudesRutas)
+        {
+            suma += ((longitud - optimo) / optimo);
+        }
+
+        return (suma / longitudesRutas.Count) * 100f;
+    }
 
     float DPP(List<float> longitudesRutas)
     {
-        if (longitudesRutas.Count <= 1)
+        if (longitudesRutas == null || longitudesRutas.Count <= 1)
             return 0f;
 
         float media = longitudesRutas.Average();
-        float varianza = 0f;
+        if (media <= 0f)
+            return 0f;
 
-        foreach (var longitud in longitudesRutas)
+        float varianza = 0f;
+        foreach (float longitud in longitudesRutas)
         {
-            varianza += Mathf.Pow((longitud - media), 2);
+            varianza += Mathf.Pow(longitud - media, 2f);
         }
+
         varianza /= longitudesRutas.Count;
 
         float desviacionEstandar = Mathf.Sqrt(varianza);
         return (desviacionEstandar / media) * 100f;
     }
 
-    float GAP(List<float> longitudesRutas, float optimo) 
-        {
-            float media = longitudesRutas.Average();
-            return ((media - optimo) / optimo) * 100;
-        }
+    float GAP(float mejorEncontrado, float optimo)
+    {
+        if (optimo <= 0f)
+            return 0f;
 
-      
-
+        return ((mejorEncontrado - optimo) / optimo) * 100f;
+    }
 }
-
